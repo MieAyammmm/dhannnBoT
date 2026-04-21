@@ -1,90 +1,71 @@
 import { Hono } from "hono";
 
-type Bindings = {
-  DB: D1Database;
-};
+const app = new Hono();
 
-const app = new Hono<{ Bindings: Bindings }>();
+const notes: string[] = [];
+const todos: string[] = [];
 
-const TELEGRAM_TOKEN = "8626624026:AAEzMxduEuz19kXwC93QvzK9V6E13155x9o";
+const TOKEN = "8626624026:AAEzMxduEuz19kXwC93QvzK9V6E13155x9o";
 
-// webhook handler
-app.post("/", async (c) => {
+app.get("/", (c) => {
+  return c.text("Hello Hono!");
+});
+
+app.post("/webhook", async (c) => {
   const body = await c.req.json();
 
   const message = body.message;
-  if (!message) return c.text("ok");
+  const text = message?.text?.toLowerCase();
+  const chatId = message?.chat?.id;
 
-  const chatId = message.chat.id;
-  const text = message.text;
-
-  let reply = "Perintah tidak dikenali 🤖";
-
-  // =========================
-  // 📝 NOTES
-  // =========================
-
-  if (text.startsWith("catat")) {
-    const isi = text.replace("catat ", "");
-
-    await c.env.DB.prepare(
-      "INSERT INTO notes (user_id, content, created_at) VALUES (?, ?, ?)",
-    )
-      .bind(chatId.toString(), isi, new Date().toISOString())
-      .run();
-
-    reply = "✅ Catatan disimpan!";
+  if (!chatId || !text) {
+    return c.text("no message");
   }
 
-  if (text === "lihat catatan") {
-    const result = await c.env.DB.prepare(
-      "SELECT content FROM notes WHERE user_id = ?",
-    )
-      .bind(chatId.toString())
-      .all();
+  let reply = "";
 
-    const data = result.results.map((r: any) => r.content);
+  // 📝 NOTES
+  if (text.startsWith("catat")) {
+    const isi = text.replace("catat", "").trim();
+    notes.push(isi);
 
-    reply = data.length
-      ? `📝 Catatan kamu:\n- ${data.join("\n- ")}`
+    reply = `📝 Catatan disimpan:\n"${isi}"`;
+  }
+
+  // ✅ TODO
+  else if (text.startsWith("tugas")) {
+    const isi = text.replace("tugas", "").trim();
+    todos.push(isi);
+
+    reply = `✅ Tugas ditambahkan:\n"${isi}"`;
+  }
+
+  // 📋 LIHAT NOTES
+  else if (text === "lihat catatan") {
+    reply = notes.length
+      ? `📝 Catatan kamu:\n- ${notes.join("\n- ")}`
       : "Belum ada catatan";
   }
 
-  // =========================
-  // 📌 TODO
-  // =========================
-
-  if (text.startsWith("todo")) {
-    const isi = text.replace("todo ", "");
-
-    await c.env.DB.prepare(
-      "INSERT INTO todos (user_id, content, created_at) VALUES (?, ?, ?)",
-    )
-      .bind(chatId.toString(), isi, new Date().toISOString())
-      .run();
-
-    reply = "✅ Todo ditambahkan!";
+  // 📋 LIHAT TODO
+  else if (text === "lihat tugas") {
+    reply = todos.length
+      ? `✅ Tugas kamu:\n- ${todos.join("\n- ")}`
+      : "Belum ada tugas";
   }
 
-  if (text === "lihat todo") {
-    const result = await c.env.DB.prepare(
-      "SELECT content FROM todos WHERE user_id = ?",
-    )
-      .bind(chatId.toString())
-      .all();
-
-    const data = result.results.map((r: any) => r.content);
-
-    reply = data.length
-      ? `📌 Todo kamu:\n- ${data.join("\n- ")}`
-      : "Belum ada todo";
+  // ⏰ REMINDER (basic dulu)
+  else if (text.startsWith("ingatkan")) {
+    reply = "⏰ Reminder disimpan (fitur aktif di step berikutnya)";
   }
 
-  // =========================
-  // 🚀 KIRIM KE TELEGRAM
-  // =========================
+  // DEFAULT
+  else {
+    reply = `Aku belum paham 😅\nCoba:\n- catat beli bensin\n- tugas belajar\n- lihat catatan`;
+  }
 
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+  // kirim balasan
+  await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
