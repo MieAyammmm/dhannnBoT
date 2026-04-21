@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 
 type Bindings = {
-  DB: D1Database;
+  dhannnbot_db: D1Database;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -26,17 +26,21 @@ app.post("/webhook", async (c) => {
   if (text.startsWith("catat")) {
     const isi = text.replace("catat", "").trim();
 
-    await c.env.DB.prepare(
-      "INSERT INTO notes (user_id, content, created_at) VALUES (?, ?, ?)",
-    )
+    await c.env.dhannnbot_db
+      .prepare(
+        // ← Ganti DB → dhannnbot_db
+        "INSERT INTO notes (user_id, content, created_at) VALUES (?, ?, ?)",
+      )
       .bind(chatId.toString(), isi, new Date().toISOString())
       .run();
 
     reply = "✅ Catatan disimpan!";
   } else if (text === "lihat catatan") {
-    const result = await c.env.DB.prepare(
-      "SELECT content FROM notes WHERE user_id = ? ORDER BY created_at DESC",
-    )
+    const result = await c.env.dhannnbot_db
+      .prepare(
+        // ← Ganti DB → dhannnbot_db
+        "SELECT content FROM notes WHERE user_id = ? ORDER BY created_at DESC",
+      )
       .bind(chatId.toString())
       .all();
 
@@ -52,17 +56,21 @@ app.post("/webhook", async (c) => {
   else if (text.startsWith("todo")) {
     const isi = text.replace("todo", "").trim();
 
-    await c.env.DB.prepare(
-      "INSERT INTO todos (user_id, content, created_at) VALUES (?, ?, ?)",
-    )
+    await c.env.dhannnbot_db
+      .prepare(
+        // ← Ganti DB → dhannnbot_db
+        "INSERT INTO todos (user_id, content, created_at) VALUES (?, ?, ?)",
+      )
       .bind(chatId.toString(), isi, new Date().toISOString())
       .run();
 
     reply = "✅ Todo ditambahkan!";
   } else if (text === "lihat todo") {
-    const result = await c.env.DB.prepare(
-      "SELECT content FROM todos WHERE user_id = ? ORDER BY created_at DESC",
-    )
+    const result = await c.env.dhannnbot_db
+      .prepare(
+        // ← Ganti DB → dhannnbot_db
+        "SELECT content FROM todos WHERE user_id = ? ORDER BY created_at DESC",
+      )
       .bind(chatId.toString())
       .all();
 
