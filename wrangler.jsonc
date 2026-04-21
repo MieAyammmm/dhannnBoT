@@ -5,7 +5,7 @@
   "compatibility_date": "2026-04-21",
   "d1_databases": [
     {
-      "binding": "DB",
+      "binding": "dhannnbot_db",
       "database_name": "dhannnbot-db",
       "database_id": "81dc9adb-bec4-480e-9f69-6c05ba7d144b",
       "remote": true,
