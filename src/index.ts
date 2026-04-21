@@ -6,8 +6,7 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-const TELEGRAM_TOKEN =
-  "8626624026:AAEzMxduEuz19kXwC93QvzK9V6E13155x9o:AAEzMxduEuz19kXwC93QvzK9V6E13155x9o";
+const TELEGRAM_TOKEN = "8626624026:AAEzMxduEuz19kXwC93QvzK9V6E13155x9o";
 
 // webhook handler
 app.post("/", async (c) => {
