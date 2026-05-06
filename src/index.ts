@@ -7,10 +7,9 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-
 function getWIBDate() {
   return new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }),
   );
 }
 
@@ -25,6 +24,37 @@ app.post("/webhook", async (c) => {
 
   let reply = "Perintah tidak dikenali 🤖";
 
+  if (text === "/start") {
+    reply = `👋 Halo!
+
+Aku adalah bot personal assistant kamu 🤖
+
+Kamu bisa pakai aku untuk:
+📝 Catatan
+📌 Todo
+⏰ Reminder
+
+Ketik /help untuk lihat semua perintah`;
+  } else if (text === "/help") {
+    reply = `📖 Daftar Perintah:
+
+📝 Catatan:
+- catat <isi>
+- lihat catatan
+
+📌 Todo:
+- todo <isi>
+- lihat todo
+
+⏰ Reminder:
+- ingatkan aku <pesan> jam HH:MM
+
+Contoh:
+ingatkan aku belajar jam 20:00
+
+Gunakan format jam dengan titik dua ya (:)
+`;
+  }
 
   if (text.startsWith("catat")) {
     const isi = text.replace("catat", "").trim();
@@ -32,17 +62,15 @@ app.post("/webhook", async (c) => {
     const now = getWIBDate();
 
     await c.env.DB.prepare(
-      "INSERT INTO notes (user_id, content, created_at) VALUES (?, ?, ?)"
+      "INSERT INTO notes (user_id, content, created_at) VALUES (?, ?, ?)",
     )
       .bind(chatId.toString(), isi, now.toISOString())
       .run();
 
     reply = "✅ Catatan disimpan!";
-  }
-
-  else if (text === "lihat catatan") {
+  } else if (text === "lihat catatan") {
     const result = await c.env.DB.prepare(
-      "SELECT content FROM notes WHERE user_id = ? ORDER BY created_at DESC"
+      "SELECT content FROM notes WHERE user_id = ? ORDER BY created_at DESC",
     )
       .bind(chatId.toString())
       .all();
@@ -52,26 +80,21 @@ app.post("/webhook", async (c) => {
     reply = data.length
       ? `📝 Catatan kamu:\n- ${data.join("\n- ")}`
       : "Belum ada catatan";
-  }
-
-
-  else if (text.startsWith("todo")) {
+  } else if (text.startsWith("todo")) {
     const isi = text.replace("todo", "").trim();
 
     const now = getWIBDate();
 
     await c.env.DB.prepare(
-      "INSERT INTO todos (user_id, content, created_at) VALUES (?, ?, ?)"
+      "INSERT INTO todos (user_id, content, created_at) VALUES (?, ?, ?)",
     )
       .bind(chatId.toString(), isi, now.toISOString())
       .run();
 
     reply = "✅ Todo ditambahkan!";
-  }
-
-  else if (text === "lihat todo") {
+  } else if (text === "lihat todo") {
     const result = await c.env.DB.prepare(
-      "SELECT content FROM todos WHERE user_id = ? ORDER BY created_at DESC"
+      "SELECT content FROM todos WHERE user_id = ? ORDER BY created_at DESC",
     )
       .bind(chatId.toString())
       .all();
@@ -81,9 +104,7 @@ app.post("/webhook", async (c) => {
     reply = data.length
       ? `📌 Todo kamu:\n- ${data.join("\n- ")}`
       : "Belum ada todo";
-  }
-
-  else if (text.startsWith("ingatkan aku")) {
+  } else if (text.startsWith("ingatkan aku")) {
     const jamMatch = text.match(/jam (\d{2}:\d{2})/);
 
     const pesan = text
@@ -102,7 +123,7 @@ app.post("/webhook", async (c) => {
       const remindAt = `${tanggal}T${jam}:00`;
 
       await c.env.DB.prepare(
-        "INSERT INTO reminders (user_id, message, remind_at) VALUES (?, ?, ?)"
+        "INSERT INTO reminders (user_id, message, remind_at) VALUES (?, ?, ?)",
       )
         .bind(chatId.toString(), pesan, remindAt)
         .run();
@@ -111,16 +132,19 @@ app.post("/webhook", async (c) => {
     }
   }
 
-  await fetch(`https://api.telegram.org/bot${c.env.TELEGRAM_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  await fetch(
+    `https://api.telegram.org/bot${c.env.TELEGRAM_TOKEN}/sendMessage`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: reply,
+      }),
     },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: reply,
-    }),
-  });
+  );
 
   return c.text("ok");
 });
@@ -128,31 +152,31 @@ app.post("/webhook", async (c) => {
 export default {
   fetch: app.fetch,
 
-
   async scheduled(event: ScheduledEvent, env: Bindings) {
     const now = getWIBDate().toISOString();
 
     const result = await env.DB.prepare(
-      "SELECT * FROM reminders WHERE is_done = 0 AND remind_at <= ?"
+      "SELECT * FROM reminders WHERE is_done = 0 AND remind_at <= ?",
     )
       .bind(now)
       .all();
 
     for (const r of result.results) {
-      await fetch(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/sendMessage`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      await fetch(
+        `https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/sendMessage`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            chat_id: r.user_id,
+            text: `⏰ Reminder:\n${r.message}`,
+          }),
         },
-        body: JSON.stringify({
-          chat_id: r.user_id,
-          text: `⏰ Reminder:\n${r.message}`,
-        }),
-      });
+      );
 
-      await env.DB.prepare(
-        "UPDATE reminders SET is_done = 1 WHERE id = ?"
-      )
+      await env.DB.prepare("UPDATE reminders SET is_done = 1 WHERE id = ?")
         .bind(r.id)
         .run();
     }
