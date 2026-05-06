@@ -5,12 +5,20 @@
   "compatibility_date": "2026-04-21",
   "d1_databases": [
     {
-      "binding": "dhannnbot_db",
+     "binding": "DB",
       "database_name": "dhannnbot-db",
       "database_id": "81dc9adb-bec4-480e-9f69-6c05ba7d144b",
-      "remote": true,
+      "remote": true
     },
   ],
+
+   "vars": {
+    "TELEGRAM_TOKEN": "8626624026:AAEzMxduEuz19kXwC93QvzK9V6E13155x9o"
+  },
+
+  "triggers": {
+    "crons": ["* * * * *"]
+  }
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
